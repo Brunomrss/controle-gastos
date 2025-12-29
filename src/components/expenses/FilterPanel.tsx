@@ -156,17 +156,17 @@ export function FilterPanel({
           {/* Category */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Categoria</Label>
-            <Select
-              value={filters.category || ''}
+          <Select
+              value={filters.category || '__all__'}
               onValueChange={(val) =>
-                updateFilter('category', val as Category || undefined)
+                updateFilter('category', val === '__all__' ? undefined : val as Category)
               }
             >
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="__all__">Todas</SelectItem>
                 {CATEGORIES.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
@@ -180,9 +180,9 @@ export function FilterPanel({
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Subcategoria</Label>
             <Select
-              value={filters.subcategory || ''}
+              value={filters.subcategory || '__all__'}
               onValueChange={(val) =>
-                updateFilter('subcategory', val || undefined)
+                updateFilter('subcategory', val === '__all__' ? undefined : val)
               }
               disabled={!filters.category}
             >
@@ -190,7 +190,7 @@ export function FilterPanel({
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="__all__">Todas</SelectItem>
                 {subcategories.map((sub) => (
                   <SelectItem key={sub} value={sub}>
                     {sub}
@@ -204,16 +204,16 @@ export function FilterPanel({
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Pagamento</Label>
             <Select
-              value={filters.paymentMethod || ''}
+              value={filters.paymentMethod || '__all__'}
               onValueChange={(val) =>
-                updateFilter('paymentMethod', val as PaymentMethod || undefined)
+                updateFilter('paymentMethod', val === '__all__' ? undefined : val as PaymentMethod)
               }
             >
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="__all__">Todos</SelectItem>
                 {PAYMENT_METHODS.map((method) => (
                   <SelectItem key={method.value} value={method.value}>
                     {method.label}
@@ -227,14 +227,14 @@ export function FilterPanel({
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Cartão</Label>
             <Select
-              value={filters.card || ''}
-              onValueChange={(val) => updateFilter('card', val || undefined)}
+              value={filters.card || '__all__'}
+              onValueChange={(val) => updateFilter('card', val === '__all__' ? undefined : val)}
             >
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="__all__">Todos</SelectItem>
                 {uniqueCards.map((cardName) => (
                   <SelectItem key={cardName} value={cardName}>
                     {cardName}
