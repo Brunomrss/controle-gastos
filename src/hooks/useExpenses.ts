@@ -25,6 +25,9 @@ export function useExpenses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
     },
+    onError: (error) => {
+    console.error('Erro ao criar despesa:', error);
+  },
   });
 
   // 🔹 Atualizar
