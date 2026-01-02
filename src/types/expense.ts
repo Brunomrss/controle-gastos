@@ -1,6 +1,6 @@
 export type PaymentMethod = 'pix' | 'credit_card' | 'debit_card' | 'cash';
 
-export type Category = 
+export type Category =
   | 'alimentacao'
   | 'moradia'
   | 'transporte'
@@ -14,19 +14,84 @@ export type Subcategory = {
   [K in Category]: string[];
 };
 
+/* ======================================================
+   🔹 TIPO USADO NO FRONTEND (UI)
+   ====================================================== */
 export interface Expense {
   id: string;
+
   value: number;
   date: string;
+
   paymentMethod: PaymentMethod;
   card?: string;
+
   category: Category;
-  subcategory: string;
+  subcategory?: string;
+
   description?: string;
+
   createdAt: string;
   updatedAt: string;
 }
 
+/* ======================================================
+   🔹 TIPO DO BANCO (SUPABASE)
+   ====================================================== */
+export interface ExpenseDB {
+  id: string;
+  user_id: string;
+
+  description?: string;
+  value: number;
+
+  category: Category;
+  subcategory?: string;
+
+  payment_method: PaymentMethod;
+  card?: string;
+
+  date: string;
+
+  created_at: string;
+  updated_at: string;
+}
+
+/* ======================================================
+   🔹 FORMULÁRIO (entrada do usuário)
+   ====================================================== */
+export interface ExpenseForm {
+  description?: string;
+  value: number;
+  category: Category;
+  subcategory?: string;
+  paymentMethod: PaymentMethod;
+  card?: string;
+  date: string;
+}
+
+/* ======================================================
+   🔹 INSERT NO BANCO (SUPABASE)
+   👉 já no formato snake_case
+   ====================================================== */
+export interface ExpenseInsert {
+  user_id: string;
+
+  description?: string;
+  value: number;
+
+  category: Category;
+  subcategory?: string;
+
+  payment_method: PaymentMethod;
+  card?: string;
+
+  date: string;
+}
+
+/* ======================================================
+   🔹 FILTROS
+   ====================================================== */
 export interface ExpenseFilters {
   startDate?: string;
   endDate?: string;
@@ -37,6 +102,10 @@ export interface ExpenseFilters {
   paymentMethod?: PaymentMethod;
   card?: string;
 }
+
+/* ======================================================
+   🔹 CONSTANTES
+   ====================================================== */
 
 export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'pix', label: 'Pix' },
@@ -79,25 +148,3 @@ export const DEFAULT_CARDS = [
   'XP',
   'Outro',
 ];
-
-export const CATEGORY_COLORS: Record<Category, string> = {
-  alimentacao: 'hsl(var(--chart-1))',
-  moradia: 'hsl(var(--chart-2))',
-  transporte: 'hsl(var(--chart-3))',
-  lazer: 'hsl(var(--chart-4))',
-  saude: 'hsl(var(--chart-5))',
-  educacao: 'hsl(var(--chart-6))',
-  vestuario: 'hsl(262, 83%, 58%)',
-  outros: 'hsl(215, 15%, 50%)',
-};
-
-export type ExpenseInsert = {
-  description: string;
-  value: number;
-  category: Category;
-  subcategory?: string;
-  paymentMethod: PaymentMethod;
-  card?: string;
-  date: string;
-};
-

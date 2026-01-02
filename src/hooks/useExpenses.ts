@@ -1,45 +1,102 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Expense, ExpenseFilters, Category, PaymentMethod, ExpenseInsert } from '@/types/expense';
+import {
+  Expense,
+  ExpenseFilters,
+  Category,
+  PaymentMethod,
+  ExpenseInsert,
+  ExpenseForm,
+} from '@/types/expense';
 import {
   fetchExpenses,
   createExpense,
   updateExpenseById,
   deleteExpenseById,
 } from '@/services/expenses';
+import { supabase } from '@/lib/supabaseClient';
 
 export function useExpenses() {
   const queryClient = useQueryClient();
-
   const [filters, setFilters] = useState<ExpenseFilters>({});
 
-  // 🔹 Buscar despesas do Supabase
+  /* ======================================================
+     🔹 FETCH
+     ====================================================== */
+
   const { data: expenses = [], isLoading } = useQuery({
     queryKey: ['expenses'],
     queryFn: fetchExpenses,
   });
 
-  // 🔹 Criar
+  /* ======================================================
+     🔹 CREATE
+     ====================================================== */
+
   const addExpenseMutation = useMutation({
-    mutationFn: createExpense,
+    mutationFn: async (expenseForm: ExpenseForm) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const expenseToInsert: ExpenseInsert = {
+        user_id: user.id,
+        description: expenseForm.description,
+        value: expenseForm.value,
+        category: expenseForm.category,
+        subcategory: expenseForm.subcategory,
+        payment_method: expenseForm.paymentMethod,
+        card: expenseForm.card,
+        date: expenseForm.date,
+      };
+
+      return createExpense(expenseToInsert);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
     },
     onError: (error) => {
-    console.error('Erro ao criar despesa:', error);
-  },
+      console.error('Erro ao criar despesa:', error);
+    },
   });
 
-  // 🔹 Atualizar
+  /* ======================================================
+     🔹 UPDATE
+     ====================================================== */
+
   const updateExpenseMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Expense> }) =>
-      updateExpenseById(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Expense>;
+    }) => {
+      const payload: Partial<ExpenseInsert> = {
+        description: data.description,
+        value: data.value,
+        category: data.category,
+        subcategory: data.subcategory,
+        payment_method: data.paymentMethod,
+        card: data.card,
+        date: data.date,
+      };
+
+      return updateExpenseById(id, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
     },
   });
 
-  // 🔹 Deletar
+  /* ======================================================
+     🔹 DELETE
+     ====================================================== */
+
   const deleteExpenseMutation = useMutation({
     mutationFn: deleteExpenseById,
     onSuccess: () => {
@@ -47,14 +104,17 @@ export function useExpenses() {
     },
   });
 
-  // 🔹 API compatível com seu Index atual
-  const addExpense = (expense: ExpenseInsert) => {
+  /* ======================================================
+     🔹 API EXPORTADA
+     ====================================================== */
+
+  const addExpense = (expense: ExpenseForm) => {
     addExpenseMutation.mutate(expense);
   };
 
   const updateExpense = (
     id: string,
-    updates: Partial<Omit<Expense, 'id' | 'createdAt'>>
+    updates: Partial<Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>>
   ) => {
     updateExpenseMutation.mutate({ id, data: updates });
   };
@@ -63,7 +123,10 @@ export function useExpenses() {
     deleteExpenseMutation.mutate(id);
   };
 
-  // 🔹 Filtros (mantido)
+  /* ======================================================
+     🔹 FILTROS
+     ====================================================== */
+
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
       const expenseDate = new Date(expense.date);
@@ -81,7 +144,10 @@ export function useExpenses() {
     });
   }, [expenses, filters]);
 
-  // 🔹 Estatísticas (mantido)
+  /* ======================================================
+     🔹 STATS
+     ====================================================== */
+
   const stats = useMemo(() => {
     const total = filteredExpenses.reduce((sum, exp) => sum + exp.value, 0);
     const count = filteredExpenses.length;
@@ -104,28 +170,13 @@ export function useExpenses() {
       return acc;
     }, {} as Record<string, number>);
 
-    const byDate = filteredExpenses.reduce((acc, exp) => {
-      const date = exp.date.split('T')[0];
-      acc[date] = (acc[date] || 0) + exp.value;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
-    const uniqueDays = new Set(filteredExpenses.map((exp) => exp.date.split('T')[0])).size;
-    const dailyAverage = uniqueDays > 0 ? total / uniqueDays : 0;
-
     return {
       total,
       count,
       average,
-      dailyAverage,
       byCategory,
       byPaymentMethod,
       byCard,
-      byDate,
-      topCategory: topCategory
-        ? { category: topCategory[0] as Category, value: topCategory[1] }
-        : null,
     };
   }, [filteredExpenses]);
 
