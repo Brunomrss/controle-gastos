@@ -90,3 +90,14 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   vestuario: 'hsl(262, 83%, 58%)',
   outros: 'hsl(215, 15%, 50%)',
 };
+
+export type ExpenseInsert = {
+  description: string;
+  value: number;
+  category: Category;
+  subcategory?: string;
+  paymentMethod: PaymentMethod;
+  card?: string;
+  date: string;
+};
+

@@ -1,58 +1,66 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Expense, ExpenseFilters, Category, PaymentMethod } from '@/types/expense';
-
-const STORAGE_KEY = 'expenses-data';
+import { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Expense, ExpenseFilters, Category, PaymentMethod, ExpenseInsert } from '@/types/expense';
+import {
+  fetchExpenses,
+  createExpense,
+  updateExpenseById,
+  deleteExpenseById,
+} from '@/services/expenses';
 
 export function useExpenses() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const queryClient = useQueryClient();
+
   const [filters, setFilters] = useState<ExpenseFilters>({});
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Load expenses from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setExpenses(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error loading expenses:', e);
-      }
-    }
-    setIsLoading(false);
-  }, []);
+  // 🔹 Buscar despesas do Supabase
+  const { data: expenses = [], isLoading } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: fetchExpenses,
+  });
 
-  // Save expenses to localStorage
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-    }
-  }, [expenses, isLoading]);
+  // 🔹 Criar
+  const addExpenseMutation = useMutation({
+    mutationFn: createExpense,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    },
+  });
 
-  const addExpense = (expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newExpense: Expense = {
-      ...expense,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setExpenses((prev) => [...prev, newExpense]);
-    return newExpense;
+  // 🔹 Atualizar
+  const updateExpenseMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Expense> }) =>
+      updateExpenseById(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    },
+  });
+
+  // 🔹 Deletar
+  const deleteExpenseMutation = useMutation({
+    mutationFn: deleteExpenseById,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    },
+  });
+
+  // 🔹 API compatível com seu Index atual
+  const addExpense = (expense: ExpenseInsert) => {
+    addExpenseMutation.mutate(expense);
   };
 
-  const updateExpense = (id: string, updates: Partial<Omit<Expense, 'id' | 'createdAt'>>) => {
-    setExpenses((prev) =>
-      prev.map((expense) =>
-        expense.id === id
-          ? { ...expense, ...updates, updatedAt: new Date().toISOString() }
-          : expense
-      )
-    );
+  const updateExpense = (
+    id: string,
+    updates: Partial<Omit<Expense, 'id' | 'createdAt'>>
+  ) => {
+    updateExpenseMutation.mutate({ id, data: updates });
   };
 
   const deleteExpense = (id: string) => {
-    setExpenses((prev) => prev.filter((expense) => expense.id !== id));
+    deleteExpenseMutation.mutate(id);
   };
 
+  // 🔹 Filtros (mantido)
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
       const expenseDate = new Date(expense.date);
@@ -70,24 +78,22 @@ export function useExpenses() {
     });
   }, [expenses, filters]);
 
+  // 🔹 Estatísticas (mantido)
   const stats = useMemo(() => {
     const total = filteredExpenses.reduce((sum, exp) => sum + exp.value, 0);
     const count = filteredExpenses.length;
     const average = count > 0 ? total / count : 0;
 
-    // By category
     const byCategory = filteredExpenses.reduce((acc, exp) => {
       acc[exp.category] = (acc[exp.category] || 0) + exp.value;
       return acc;
     }, {} as Record<Category, number>);
 
-    // By payment method
     const byPaymentMethod = filteredExpenses.reduce((acc, exp) => {
       acc[exp.paymentMethod] = (acc[exp.paymentMethod] || 0) + exp.value;
       return acc;
     }, {} as Record<PaymentMethod, number>);
 
-    // By card
     const byCard = filteredExpenses.reduce((acc, exp) => {
       if (exp.card) {
         acc[exp.card] = (acc[exp.card] || 0) + exp.value;
@@ -95,17 +101,13 @@ export function useExpenses() {
       return acc;
     }, {} as Record<string, number>);
 
-    // By date (for line chart)
     const byDate = filteredExpenses.reduce((acc, exp) => {
       const date = exp.date.split('T')[0];
       acc[date] = (acc[date] || 0) + exp.value;
       return acc;
     }, {} as Record<string, number>);
 
-    // Top category
     const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
-
-    // Daily average (based on unique days)
     const uniqueDays = new Set(filteredExpenses.map((exp) => exp.date.split('T')[0])).size;
     const dailyAverage = uniqueDays > 0 ? total / uniqueDays : 0;
 
@@ -118,7 +120,9 @@ export function useExpenses() {
       byPaymentMethod,
       byCard,
       byDate,
-      topCategory: topCategory ? { category: topCategory[0] as Category, value: topCategory[1] } : null,
+      topCategory: topCategory
+        ? { category: topCategory[0] as Category, value: topCategory[1] }
+        : null,
     };
   }, [filteredExpenses]);
 
@@ -126,9 +130,7 @@ export function useExpenses() {
     return [...new Set(expenses.filter((e) => e.card).map((e) => e.card!))];
   }, [expenses]);
 
-  const clearFilters = () => {
-    setFilters({});
-  };
+  const clearFilters = () => setFilters({});
 
   return {
     expenses: filteredExpenses,
