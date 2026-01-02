@@ -1,27 +1,59 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 export default function Register() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  async function handleSignUp(e) {
+  async function handleRegister(e) {
     e.preventDefault();
-    const { data, error } = await supabase.auth.signUp({
+    setLoading(true);
+
+    const { error } = await supabase.auth.signUp({
       email,
       password,
     });
-    if (error) alert(error.message);
-    else {
-      alert("Cadastrado com sucesso!");
+
+    setLoading(false);
+
+    if (error) {
+      alert(error.message);
+      return;
     }
+
+    // cadastro OK → usuário já logado
+    navigate("/");
   }
 
   return (
-    <form onSubmit={handleSignUp}>
-      <input type="email" placeholder="Email" onChange={e => setEmail(e.target.value)} />
-      <input type="password" placeholder="Senha" onChange={e => setPassword(e.target.value)} />
-      <button type="submit">Registrar</button>
-    </form>
+    <div style={{ maxWidth: 400, margin: "100px auto" }}>
+      <h1>Criar conta</h1>
+
+      <form onSubmit={handleRegister}>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+
+        <input
+          type="password"
+          placeholder="Senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Criando conta..." : "Registrar"}
+        </button>
+      </form>
+    </div>
   );
 }
